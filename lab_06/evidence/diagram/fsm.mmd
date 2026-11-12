@@ -1,0 +1,22 @@
+stateDiagram-v2
+    direction LR
+    [*] --> normal
+    normal --> interested: button / approach
+    normal --> happy: touch
+    normal --> sleepy: idle (no input 6.0 s)
+    normal --> afraid: near (d <= 0.20 m)
+    interested --> happy: touch
+    interested --> normal: timeout 2.0 s / clear / fault
+    interested --> afraid: near
+    happy --> interested: button / approach
+    happy --> normal: timeout 2.0 s / clear / fault
+    happy --> afraid: near
+    sleepy --> interested: button / approach
+    sleepy --> happy: touch
+    sleepy --> normal: clear / fault
+    sleepy --> afraid: near
+    afraid --> normal: clear (C1: d >= 0.28 m) / fault
+    note right of afraid
+      guard: touch, button, approach,
+      timeout, idle are held (no exit)
+    end note

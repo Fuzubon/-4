@@ -1,0 +1,16 @@
+flowchart LR
+    H["Hand / person<br/>true distance d(t)"] -->|physical stimulus| S["Range sensor (simulated)<br/>noise sigma, delay, invalid"]
+    S -->|"raw d_raw, timestamp, valid"| V{"Sensor contract<br/>valid & fresh?"}
+    V -->|no| SAFE["Safe command u = 0<br/>log INVALID"]
+    V -->|"yes: C1 uses raw"| T1["C1 single threshold 0.35 m"]
+    V -->|"yes: C2, C3"| F["Low-pass filter<br/>d_f = b*d_raw + (1-b)*d_f<br/>b = 0.25"]
+    F --> C{"Controller"}
+    C -->|C2| T2["Hysteresis enter 0.32 / exit 0.38 m"]
+    C -->|C3| T3["u = clamp(Kp*(0.35 - d_f), -0.6, 0.6)<br/>Kp = 2.0"]
+    T1 --> A["Lamp actuator<br/>state NEAR/FAR + command u"]
+    T2 --> A
+    T3 --> A
+    SAFE --> A
+    O["C0 open loop<br/>time schedule, no sensor"] -.-> A
+    A -->|"lamp bends toward / away"| H
+    A -->|"log CSV: state, u, events"| L[("Log / metrics")]

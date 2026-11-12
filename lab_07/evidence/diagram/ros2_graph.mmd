@@ -1,0 +1,23 @@
+flowchart LR
+  subgraph LAPTOP["Laptop: Ubuntu 24.04 + ROS 2 Jazzy, Python, perf_counter clock"]
+    CAM["USB camera"] --> V["vision_node<br/>MediaPipe face + hand 21 pts"]
+    V -->|"/lamp/input/button Bool<br/>(open palm)"| I
+    V -->|"/lamp/input/touch Bool<br/>(hand very close)"| I
+    V -->|"/lamp/input/distance Float32 m<br/>(face size, calibrated)"| I
+    V -->|"/lamp/interaction String<br/>wave, fist, shush, face"| I
+    I["interaction_node<br/>AHM 4 hormones -> emotion FSM<br/>-> SO(2) CPG + IK + clamp<br/>(internal state: H, R, mood, sulk, o1, o2)"]
+    I -->|"/lamp/emotion String"| LOG
+    I -->|"/lamp/servo_command Float32MultiArray<br/>rad [tilt, extend, nod]"| B
+    I -->|"/lamp/rgb_command ColorRGBA 0-1"| B
+    B["serial_bridge_node<br/>rad -> servo counts, watchdog"]
+    LOG[("rosbag2 + CSV logger")]
+    V -.-> LOG
+    B -.-> LOG
+  end
+  B -->|"USB serial 115200<br/>'p4,p5,p6,p3,spd,r,g,b,tq'"| M["Maixduino K210 (MaixPy main.py)<br/>no micro-ROS: host-side bridge"]
+  M -->|"UART 1 Mbps"| S["Feetech SCS servos ID 3-6"]
+  M -->|"GPIO 14"| L["WS2812 LED ring x12"]
+  S -->|"lamp pose seen by player"| P["Player"]
+  L --> P
+  P -->|"face / hand gestures"| CAM
+  VID["Phone video 240 fps<br/>(physical onset)"] -.-> P

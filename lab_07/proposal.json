@@ -1,90 +1,178 @@
 {
-  "question": "ใน offline course model การเพิ่ม transport jitter และ message drop พร้อมกันเปลี่ยนเวลาจาก interaction source ถึง applied movement+RGB onset และจำนวน source ที่ไม่มี both onset อย่างไร เมื่อเทียบกับ ideal transport?",
-  "hypothesis": "C1 จะมี median transport age และจำนวน missing/censored source outcomes มากกว่า C0; หากเกิด onset ครบ latency จะยังไม่สามารถใช้แทนเวลาตอบสนองทางกายภาพได้ เพราะวัดถึง software output เท่านั้น",
-  "biological_inspiration_source": "แนวคิด slow internal modulation ใช้กรอบ Artificial Hormone Mechanism จาก Homchanthanakul et al. (2019), DOI 10.1109/IROS40897.2019.8968580; oscillator อ้างสมการ SO(2) จากเอกสาร Week 03 ของรายวิชาโดย Dr. Poramate. อ้างอิงแนวคิด ไม่ได้อ้างว่าเป็นการทำซ้ำผลจากบทความ",
-  "AHM_equation": "แบบจำลองรายวิชา: P=k_prod*S, C=k_clear*H_old, B=k_bind*R_old, H_new=clamp(H_old+dt*(P-C-B),0,1), R=clamp((H-H_min)/(H_max-H_min),0,1). H เป็นสถานะสะสม; ตัวเลขและ Euler update เป็น proposed course model ไม่ใช่ parameter จาก paper",
-  "SO2_CPG_equation": "ใช้ old outputs พร้อมกัน: o1_next=tanh(alpha*(cos(phi)*o1+sin(phi)*o2)); o2_next=tanh(alpha*(-sin(phi)*o1+cos(phi)*o2)). ห้ามใช้ o1_next คำนวณ o2_next ในรอบเดียวกัน",
-  "integration_description": "แผน AHM–CPG: stimulus S ปรับ H, receptor R ใช้ bounded mapping phi=clamp(0.20+0.20*R,0.10,0.45) rad และ stride_half=clamp(0.055+0.010*R,0.040,0.070) m; SO(2) CPG สร้าง gait phase แล้ว decoder สร้าง semantic servo commands. Lab07 offline transport study วัด interaction/software-output boundary; ยังไม่ได้รวม AHM–CPG เข้ากับ ROS nodes หรือ physical robot",
-  "independent_variable": "transport profile: ideal C0 เทียบ combined delay/jitter/drop C1",
-  "conditions": [
-    {
-      "name": "C0",
-      "baseline": true,
-      "change": "Ideal modeled transport: delay 0 s, drop probability 0; ใช้ policy, source schedule, scheduler และ bounds เดียวกับ C1",
-      "repeats": 3
-    },
-    {
-      "name": "C1",
-      "baseline": false,
-      "change": "Combined modeled delay choices 0, 0.02, 0.04, 0.06, 0.10, 0.14, 0.18 s, random drop probability 0.08 และ burst drop 12.50–12.70 s; ไม่แยก causal effect ของ jitter กับ drop",
-      "repeats": 3
-    }
-  ],
-  "metrics": [
-    {
-      "name": "both_latency_s",
-      "unit": "s",
-      "measurement": "max(first applied movement, first applied RGB) minus original source_time_s; วัดใน offline virtual clock ถึง applied software outputs ไม่ใช่ physical onset",
-      "missing_rule": "ถ้า movement หรือ RGB onset อย่างใดอย่างหนึ่งไม่พบภายใน 22 s ให้เป็น null/N/A และนับแยกเป็น missing; ห้ามแทนด้วย 0"
-    },
-    {
-      "name": "transport_age_s",
-      "unit": "s",
-      "measurement": "receipt_time_s minus publish_time_s เฉพาะ messages ที่ได้รับ; รายงานจำนวน published, received, dropped และ censored แยกกัน",
-      "missing_rule": "message ที่ไม่ถึงหรือ censored หลังจบ trial ไม่มี transport age; ไม่แทนด้วย 0"
-    }
-  ],
-  "controls": [
-    "ใช้ policy/version, debounce/hysteresis, invalid/stale fallback, command bounds, slew และ 22 s virtual duration เดียวกันใน C0/C1",
-    "ใช้ source-input schedule และ paired seed เหมือนกันในแต่ละคู่",
-    "ใช้ 3 repeats seeds 41, 42, 43 และเก็บ input/command/event traces, config และ SHA-256 manifest ทุก run",
-    "ประกาศ expected input IDs ก่อนรันและใช้ denominator เดียวกันทั้ง C0/C1; รายงาน all 10 sources รวม missing/conflict/fault",
-    "ไม่เปลี่ยน node QoS, hardware, sample schedule หรือ protocol กลางการทดลอง"
-  ],
-  "parameters": [
-    {
-      "name": "dt",
-      "value": 0.02,
-      "unit": "s",
-      "provenance": "proposed course model ใน lab_07/README.md"
-    },
-    {
-      "name": "virtual_duration",
-      "value": 22,
-      "unit": "s",
-      "provenance": "proposed course model ใน lab_07/README.md; ไม่ใช่ human trial duration"
-    },
-    {
-      "name": "drop_probability_C1",
-      "value": 0.08,
-      "unit": "probability/message",
-      "provenance": "proposed course transport stress profile ใน lab_07/README.md"
-    },
-    {
-      "name": "expected_input_ids",
-      "value": [
-        "button_01",
-        "touch_01",
-        "approach_01",
-        "clear_01",
-        "near_01",
-        "clear_02",
-        "button_02",
-        "touch_conflict",
-        "fault_invalid",
-        "fault_stale"
-      ],
-      "unit": "source IDs",
-      "provenance": "source set จาก synthetic offline fixture; primary expected subset 7 IDs ต้องประกาศก่อนรันและรายงาน all 10 ด้วย"
-    }
-  ],
-  "simulation_plan": "รัน offline_lab.py --condition all --repeats 3 ด้วย seeds 41/42/43. เก็บ input_trace.csv, command_trace.csv, events.csv, metrics.json, config.json, report.html, source_snapshot และ manifest. ตรวจ paired inputs, message accounting และ N/A ก่อนคำนวณข้อสรุป; ผลทั้งหมดระบุว่าเป็น synthetic offline simulation.",
-  "real_robot_plan": "ยังไม่ได้ดำเนินการและไม่มีผลหุ่นยนต์จริง. ก่อนทดลองต้องใช้ Ubuntu 24.04 + ROS 2 Jazzy ที่เตรียมไว้, ติดตั้ง robot fixture อย่างปลอดภัย, ตรวจ sensor range/age, calibrate joint limits/units, วัด servo/RGB onset ด้วย external measurement และ operator มี emergency stop. ทดสอบทีละเงื่อนไขและหยุดทันทีเมื่อ sensor stale, pose เกิน bound, มี collision หรือ communication watchdog ทำงาน; ห้ามนำค่า simulator ไปขับ actuator โดยตรง.",
-  "clock_correlation_plan": "เก็บ source ID และ monotonic perf_counter_ns ที่ input publisher, interaction node, output collector; วัด clock offset/skew ด้วย shared host clock หรือ synchronization ที่บันทึก method และ error bound. ROS messages ที่ไม่มี Header ห้ามจับคู่ข้าม node จาก ordinal/payload ที่ซ้ำกัน. เพิ่ม camera/photodiode/encoder timestamp ที่สอบเทียบสำหรับ physical onset; หากยังไม่มี clock mapping/error bound ให้ source-to-physical latency เป็น N/A.",
-  "safety_stop_plan": "ผู้ควบคุมหนึ่งคนอยู่ที่ emergency stop ตลอด; ยึดฐาน/กันพื้นที่, จำกัด joint/velocity และทดสอบ watchdog ก่อนเปิด actuator. หยุดเมื่อคนเข้าเขตเสี่ยง, อุปกรณ์หลวม, เกิดการกระแทก/สั่นผิดปกติ, sensor stale/invalid, command หลุด bounds, loss of communication หรือ operator สั่งหยุด. ไม่เริ่ม physical test จนมีการสอบเทียบและอนุมัติจากผู้สอน/ผู้ดูแล.",
-  "order_counterbalancing": "offline ใช้ paired seeds ใน C0/C1; หากทำ physical pilot ให้สลับลำดับ C0/C1 แบบ AB/BA ระหว่าง paired runs และบันทึก startup offset, battery, hardware configuration และเวลาพัก.",
-  "paired_seed_or_participant_plan": "offline จับคู่ C0/C1 ด้วย source schedule และ seeds 41, 42, 43. Human study ยังไม่ดำเนินการ; ก่อนเริ่มต้องได้ consent/อนุมัติตามข้อกำหนดรายวิชา, ใช้ผู้เข้าร่วมสมัครใจ, ไม่เก็บข้อมูลระบุตัวตน, กำหนดผู้ถอนตัวได้ทุกเวลา และใช้ counterbalanced order โดยไม่บันทึกภาพ/เสียงหากไม่จำเป็น.",
-  "expected_input_ids_before_run": "ประกาศ all 10 IDs จาก source_inputs ก่อนรัน; expected positive-onset subset เบื้องต้นคือ button_01, touch_01, approach_01, clear_01, near_01, clear_02, button_02. ใช้ subset เดียวกันทั้ง C0/C1 และรายงาน input ที่ไม่มี onset พร้อม status/reason; ห้ามเลือก subset หลังเห็นผล.",
-  "human_scenario_duration_s": 600,
-  "timeline": "แผน 5 วันหลังผู้สอนอนุมัติ: วัน 1 ตรวจโค้ด/contract และทบทวนความเสี่ยง; วัน 2 รัน offline paired trials และ replay; วัน 3 หากมี robot ที่สอบเทียบแล้วทำ bench calibration/หยุดได้โดย operator; วัน 4 ทำ human interaction scenario 600 s ต่อ protocol หลัง consent/approval เท่านั้น; วัน 5 วิเคราะห์ raw data, missingness, uncertainty และเขียนรายงาน. ขณะนี้ทำเฉพาะ offline software plan; robot/human stages ยัง pending."
+ "question": "ในโคมไฟหุ่นยนต์ 4 แกนที่ตอบสนองต่อหน้าและท่ามือของคน การใช้ Artificial Hormone Mechanism (ฮอร์โมน 4 ตัว) คั่นระหว่างสิ่งเร้าจากกล้องกับ emotion FSM และ SO(2) CPG ช่วยลดการสลับอารมณ์ไปมาและการกระตุกของคำสั่งมอเตอร์ เมื่อเทียบกับการแปลงสิ่งเร้าเป็นอารมณ์ตรง ๆ หรือไม่ โดยยังตอบสนองท่ามือภายใน 1 s ทั้งใน simulation และบนโคมไฟจริง",
+ "hypothesis": "ถ้าใช้ AHM (C1) แทน direct mapping (C0) ด้วย input ชุดเดียวกัน แล้วจำนวนการเปลี่ยน emotion state ต่อนาทีและ total variation ของคำสั่งข้อต่อจะลดลงอย่างน้อย 50% เพราะ H สะสมและสลายตามเวลา (P − C − B) จึงกรอง detection ที่หลุดหรือกระพริบเพียงไม่กี่เฟรม แต่ latency จากท่ามือถึง state change จะเพิ่มขึ้นและอาจเกิน 1 s สำหรับ HAPPY ซึ่งต้องสะสมถึง 0.75",
+ "biological_inspiration_source": "(1) ระบบต่อมไร้ท่อ: ฮอร์โมนสะสม-สลายและทำให้พฤติกรรมคงอยู่หลังสิ่งเร้าหายไป ใช้กรอบ AHM จาก Homchanthanakul et al. (2019) IROS, DOI 10.1109/IROS40897.2019.8968580 และ Week 04 ของรายวิชา; (2) Central Pattern Generator SO(2) ของ Dr. Poramate Manoonpong จาก lec5 สไลด์ 18 / Week 03 สร้างการแกว่งตัวเป็นจังหวะ; (3) การแสดงอารมณ์ด้วยท่าทางของโคมไฟ (embodiment, Week 01; ตัวอย่าง ELEGNT). Sensor ที่วัดได้: กล้อง USB + MediaPipe ให้กรอบหน้า (ตำแหน่ง/ขนาด) และ landmark มือ 21 จุด (ท่า: แบมือ, กำปั้น, โบกมือ, ชู่ว์). ไม่อ้างว่าเป็นการทำซ้ำผลของบทความ",
+ "AHM_equation": "แต่ละฮอร์โมน i ∈ {Happy, Angry, Startle, Rest}: P = k_prod·max(S,0); C = k_clear·H_old (ถ้า S<0 คูณ fast_clear_mult); B = k_bind·R_old; H_new = clamp(H_old + dt·(P − C − B), 0, 1); R = H (gain 1). dt = 0.05 s. สิ่งเร้า: S_face = 1.0 เมื่อเห็นหน้า/มือ, 1.4 แบมือ, 1.8 โบกมือ; S_anger = +1 กำปั้น, −1 แบมือ/ชู่ว์; S_spike = 1 เมื่อหน้า/มือพุ่งเข้าเร็ว; S_rest = +1 เมื่อไม่มีใคร, −1 เมื่อมีคน. สมการ source คือ Hc(t) = βHc(t−1) + Hg(t) − Hr(t) (Homchanthanakul 2019); รูป Euler, ค่า k และ S เป็น proposed course/group model",
+ "SO2_CPG_equation": "a(t+1) = W(α,φ)·o(t), o = tanh(a), W = α[[cos φ, sin φ],[−sin φ, cos φ]], α = 1.10, a(0) = [0.1, 0], อัปเดตสองนิวรอนพร้อมกันจาก o เดิม (lec5 สไลด์ 18, Dr. Poramate). φ = clamp(0.20 + 0.20·R_Happy + 0.25·R_Angry − 0.10·R_Rest + 0.12·wave + 0.06·mood, 0.10, 0.50) rad. มุมข้อต่อ q = q_mid(state) + A(state)·o เช่น HAPPY: ไหล่ = 75° + 6°·o1. CPG ก้าวหนึ่ง step ต่อหนึ่ง control tick 0.05 s",
+ "integration_description": "AHM–emotion และ AHM–CPG ในระบบเดียว: ฮอร์โมน 4 ตัว (R) → emotion FSM แบบ hysteresis (CURIOUS ≥ 0.35/ออก < 0.20, HAPPY ≥ 0.75/ออก < 0.55, ANGRY ≥ 0.55/ออก < 0.32, STARTLED ≥ 0.55/ออก < 0.25, SAD/NORMAL/SLEEPY จาก Rest 0.55/0.75/0.90) เลือก pose และสี LED; R เดียวกันส่งเข้า bounded mapping ของ φ ให้ SO(2) CPG แกว่งเร็ว/ช้าตามอารมณ์; mood = (Happy + 0.5·wave) − (Rest + 0.6·Startle) คูณความเร็วมอเตอร์ ×0.5–1.5. คำสั่งข้อต่อผ่าน IK และ clamp ANGLE_LIM ก่อนส่ง serial ไป Maixduino ที่ขับเซอร์โว Feetech 4 ตัว + LED 12 ดวง. ใน ROS 2: semantic joints [tilt, extend, nod] = [ฐาน q1, การยืดไหล่+ศอกผ่าน IK, ข้อมือ q4]",
+ "independent_variable": "ชั้นสถานะภายในระหว่าง stimulus กับ emotion/CPG: C0 direct mapping (R = clamp(S,0,1) ทันที ไม่มี memory) เทียบ C1 AHM (ฮอร์โมน 4 ตัวตามสมการ)",
+ "conditions": [
+  {
+   "name": "C0",
+   "baseline": true,
+   "change": "Direct mapping: R_i = clamp(S_i, 0, 1) ทุก tick ไม่มี production/clearance/binding; ใช้กล้อง, MediaPipe, เกณฑ์ FSM, CPG, IK, bounds, slew, ความเร็วมอเตอร์และ input ชุดเดียวกับ C1",
+   "repeats": 3
+  },
+  {
+   "name": "C1",
+   "baseline": false,
+   "change": "AHM เต็มรูปแบบตาม AHM_equation (ค่า k ใน parameters) ส่วนอื่นเหมือน C0 ทุกอย่าง",
+   "repeats": 3
+  }
+ ],
+ "metrics": [
+  {
+   "name": "state_switch_rate_per_min",
+   "unit": "ครั้ง/นาที",
+   "measurement": "จำนวนการเปลี่ยน state_mode ใน log หารด้วยความยาว trial (นาที); นับเฉพาะช่วงที่ไม่มี STARTLED จาก spike ที่ตั้งใจ",
+   "missing_rule": "trial ที่ log ขาดเกิน 2 s ติดต่อกันรายงาน N/A พร้อมเหตุผล ไม่แทนด้วย 0; trial ที่หยุดกลางคันเก็บ log และรายงานแยก"
+  },
+  {
+   "name": "gesture_to_state_latency_s",
+   "unit": "s",
+   "measurement": "เวลาตั้งแต่ท่ามือเริ่ม (source: เฟรมแรกที่ MediaPipe จับท่าได้ใน simulation / เฟรมวิดีโอภายนอกที่มือเริ่มท่าบนหุ่นจริง) ถึง state_mode เปลี่ยนเป็นอารมณ์ที่คาด (HAPPY จากโบกมือ, ANGRY จากกำปั้น, QUIET จากชู่ว์)",
+   "missing_rule": "ถ้าไม่เปลี่ยนภายใน 5 s ให้เป็น null/N/A และนับเป็น miss แยก ห้ามแทนด้วย 0 หรือ 5"
+  },
+  {
+   "name": "joint_command_total_variation_rad",
+   "unit": "rad",
+   "measurement": "ผลรวม |q[k] − q[k−1]| ของคำสั่ง 4 ข้อต่อที่ส่งจริงทาง serial ตลอด trial หารด้วยความยาว trial (rad/นาที)",
+   "missing_rule": "คำสั่งที่ไม่ได้ส่ง (deadband) ไม่นับ; serial error นับแยกเป็น fault และรายงานจำนวน"
+  }
+ ],
+ "controls": [
+  "ใช้โค้ด auto_bio_lamp.py commit เดียวกัน เปลี่ยนเฉพาะสวิตช์ C0/C1; บันทึก SHA-256 ของไฟล์และ config ทุก trial",
+  "simulation ใช้ input trace ที่บันทึกไว้ (CSV ของ stimulus/landmark ต่อเฟรม) ชุดเดียวกันกับทั้ง C0 และ C1 แบบ paired",
+  "หุ่นจริง: กล้องตำแหน่ง/มุมเดิม (CAM_PAN_OFFSET, CAM_TILT_OFFSET เท่าเดิม), แสงห้องเดิม, ระยะผู้เล่น 0.5–1.0 m, แหล่งจ่ายไฟเซอร์โวเดิม",
+  "เริ่มทุก trial จากท่า STARTUP_Q = [0, 90, −90, 0]° และ reset ฮอร์โมน/mood/หลอดงอนเป็น 0",
+  "ใช้สคริปต์ท่ามือ 600 s เดียวกัน (ลำดับและเวลาท่าตาม human scenario) และผู้เล่นคนเดียวกันในแต่ละคู่ C0/C1",
+  "deadband, slew, ANGLE_LIM, ความเร็วมอเตอร์ และ GRAPH_SCALE ไม่เปลี่ยนระหว่างการทดลอง"
+ ],
+ "parameters": [
+  {
+   "name": "dt",
+   "value": 0.05,
+   "unit": "s",
+   "provenance": "control tick ของ auto_bio_lamp.py; course model Week 04"
+  },
+  {
+   "name": "Happy k_prod,k_clear,k_bind",
+   "value": [
+    0.35,
+    0.2,
+    0.05
+   ],
+   "unit": "1/s",
+   "provenance": "group model (auto_bio_lamp.py) ปรับจาก course baseline 0.8/0.6/0.2"
+  },
+  {
+   "name": "Angry k_prod,k_clear,k_bind,fast_clear_mult",
+   "value": [
+    0.6,
+    0.3,
+    0.05,
+    4.0
+   ],
+   "unit": "1/s, ตัวคูณ",
+   "provenance": "group model"
+  },
+  {
+   "name": "Startle k_prod,k_clear,k_bind",
+   "value": [
+    6.5,
+    1.5,
+    0.2
+   ],
+   "unit": "1/s",
+   "provenance": "group model: ขึ้นเร็วหายเร็ว"
+  },
+  {
+   "name": "Rest k_prod,k_clear,k_bind,fast_clear_mult",
+   "value": [
+    0.14,
+    0.08,
+    0.0,
+    2.5
+   ],
+   "unit": "1/s, ตัวคูณ",
+   "provenance": "group model: สะสมช้า"
+  },
+  {
+   "name": "alpha",
+   "value": 1.1,
+   "unit": "-",
+   "provenance": "SO(2) CPG lec5 สไลด์ 18 / Week 03"
+  },
+  {
+   "name": "phi bounds",
+   "value": [
+    0.1,
+    0.5
+   ],
+   "unit": "rad",
+   "provenance": "Week 03 handoff 0.10–0.45 ขยายบนเป็น 0.50 สำหรับท่าโบกมือ (group)"
+  },
+  {
+   "name": "emotion thresholds enter/exit HAPPY",
+   "value": [
+    0.75,
+    0.55
+   ],
+   "unit": "normalized H",
+   "provenance": "group FSM hysteresis (Week 02)"
+  },
+  {
+   "name": "emotion thresholds enter/exit ANGRY",
+   "value": [
+    0.55,
+    0.32
+   ],
+   "unit": "normalized H",
+   "provenance": "group FSM hysteresis"
+  },
+  {
+   "name": "servo speed range",
+   "value": [
+    15,
+    60
+   ],
+   "unit": "% of max speed",
+   "provenance": "Maixduino firmware move_servo speed_percent"
+  },
+  {
+   "name": "speed multiplier from mood",
+   "value": [
+    0.5,
+    1.5
+   ],
+   "unit": "-",
+   "provenance": "group model SPEED_MIN_MULT/SPEED_MAX_MULT"
+  },
+  {
+   "name": "joint limits q1..q4",
+   "value": [
+    "-79..79",
+    "0..127",
+    "-117..0",
+    "-45..43"
+   ],
+   "unit": "deg",
+   "provenance": "ANGLE_LIM วัดจากแขนจริงของกลุ่ม"
+  },
+  {
+   "name": "human scenario duration",
+   "value": 600,
+   "unit": "s",
+   "provenance": "Week 07 requirement"
+  }
+ ],
+ "simulation_plan": "Simulation = รัน controller เดิมแบบ offline บน input trace ที่บันทึกจากกล้อง (stimulus S และท่ามือต่อเฟรม พร้อม timestamp) โดยปิด serial; เก็บ log CSV ทุก tick (t, S, P, C, B, H, R ทั้ง 4 ฮอร์โมน, state_mode, φ, o1, o2, q1–q4, speed). บันทึก trace 3 ชุดจากผู้เล่นทำ scenario 600 s แล้วรัน C0 และ C1 บน trace เดียวกัน = 3 paired repeats ต่อ condition. นอกจากนี้ใช้ Lab07 offline_lab.py ทดสอบ seven-topic bridge (ผลใน evidence/offline_run)",
+ "real_robot_plan": "โคมไฟแขนกล 4 แกน (L0 87, L1 92, L2 79 mm), เซอร์โว Feetech SCS ID 3–6 ผ่าน UART 1 Mbps บน Maixduino (MaixPy main.py) และ LED ring 12 ดวง; laptop รัน Python + MediaPipe กับกล้อง USB แล้วส่งคำสั่ง 20 Hz ทาง USB serial 115200. ทำ C0 และ C1 อย่างละ 3 trials × 600 s ตาม human scenario สลับลำดับ AB/BA. ก่อนเริ่ม: ตรวจ ANGLE_LIM และ is_safe() ทุกท่า, สอบเทียบ ZERO ของเซอร์โวแต่ละตัว, ตรวจไฟเลี้ยงเซอร์โว และทดสอบ shutdown_sequence",
+ "clock_correlation_plan": "ทุก log ใช้ time.perf_counter() ของ laptop เครื่องเดียว (camera frame, decision, serial write) จึงไม่ต้องแปลง clock ข้ามเครื่องสำหรับ software latency. Physical onset วัดด้วยวิดีโอ 240 fps จากมือถือที่ถ่ายทั้งมือผู้เล่น โคมไฟ และจอ laptop ที่แสดง timestamp; ซิงก์ด้วย LED กระพริบ marker ตอนเริ่ม trial; ความไม่แน่นอน ±1 เฟรม (±4.2 ms) + ±50 ms ของ control tick. Maixduino ไม่ส่ง timestamp กลับ จึงรายงาน serial→servo onset จากวิดีโอเท่านั้น; ถ้าไม่มีวิดีโอ ให้ physical latency = N/A",
+ "safety_stop_plan": "มีผู้ดูแล 1 คนอยู่ที่ปลั๊กไฟเซอร์โวตลอด (ตัดไฟ = emergency stop) และกด q/ปิดหน้าต่างเพื่อให้แขนเข้าท่าพัก; ยึดฐานโคมกับโต๊ะ ผู้เล่นอยู่ห่าง ≥ 0.5 m นอกระยะเอื้อมของแขน (ประมาณ 0.23 m จากฐาน คำนวณจาก L1 + L2 + หัวโคม). หยุดทันทีเมื่อ: แขนชน/สั่นผิดปกติ, เซอร์โวร้อน, กล้องหลุดเกิน 3 s (โค้ดเข้าท่าพักเอง), serial error, คำสั่งหลุด ANGLE_LIM หรือผู้เล่นขอหยุด. ห้ามใช้ค่าที่ยังไม่ผ่าน is_safe()",
+ "order_counterbalancing": "หุ่นจริง: คู่ที่ 1 ลำดับ C0→C1, คู่ที่ 2 C1→C0, คู่ที่ 3 C0→C1; พัก 5 นาทีระหว่าง trial ให้เซอร์โวเย็นและผู้เล่นพัก; บันทึกอุณหภูมิห้อง/แสง/แรงดันไฟทุก trial. Simulation ไม่มีผลลำดับเพราะ deterministic บน trace เดิม",
+ "paired_seed_or_participant_plan": "Simulation จับคู่ด้วย input trace เดียวกัน 3 ชุด (trace_01–03). หุ่นจริงใช้ผู้เล่นคนเดียวกันต่อคู่ C0/C1 (สมาชิกกลุ่มที่ยินยอม) ทำสคริปต์ท่าเดียวกัน; ไม่บันทึกใบหน้าเป็นไฟล์ถาวร เก็บเฉพาะ landmark/สิ่งเร้า; ผู้เล่นถอนตัวได้ทุกเวลา และทำหลังผู้สอนอนุมัติเท่านั้น",
+ "expected_input_ids_before_run": "face_01 (0:10), palm_01 (2:00), wave_01 (2:40), fist_01 (4:00), palm_02 (4:30), shush_01 (5:10), leave_01 (6:00), return_01 (7:30), wave_02 (8:00), fist_02 (8:40), shush_02 (9:20); primary latency subset: wave_01, fist_01, shush_01, wave_02, fist_02, shush_02 ประกาศก่อนรัน ใช้เหมือนกันทุก condition และรายงานทุก ID รวม miss",
+ "human_scenario_duration_s": 600,
+ "timeline": "สัปดาห์ที่ 1: ส่ง proposal และเพิ่ม logger CSV + สวิตช์ C0/C1 ใน auto_bio_lamp.py (_ผู้รับผิดชอบ: เติมชื่อ_); สัปดาห์ที่ 2: บันทึก input trace 3 ชุด รัน simulation 6 trials และวิเคราะห์ (_เติมชื่อ_); สัปดาห์ที่ 3: สอบเทียบหุ่นจริง ทดสอบ safety แล้วรัน 6 trials × 600 s พร้อมวิดีโอ (_เติมชื่อ_); สัปดาห์ที่ 4: วิเคราะห์ raw data, missing, uncertainty และเขียนรายงาน/สไลด์ (_เติมชื่อ_). ขณะนี้มีโค้ดโคมไฟที่ทำงานได้แล้ว แต่ยังไม่มีผลทดลอง C0/C1 จริง"
 }
