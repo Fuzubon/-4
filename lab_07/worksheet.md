@@ -1,7 +1,7 @@
 # ใบงาน Lab 07 — ROS 2 graph, experimental design และ Mini Project proposal (กรอกแล้ว)
 
 กลุ่ม: 4  
-สมาชิก: ภูวเมศฐ์ กิตติธันยวัฒน์ (6752500126), _(เติมชื่อและรหัสสมาชิกคนอื่น)_  
+สมาชิก: ภูวเมศฐ์ กิตติธันยวัฒน์ 6752500126
 วันที่: 12 พ.ย. 2026  
 Policy: group transition policy ที่ผ่าน checker (`evidence/checker_group.txt`, 40/40)  
 Mini Project: โคมไฟหุ่นยนต์ 4 แกนที่มีฮอร์โมนเทียม 4 ตัว + emotion FSM + SO(2) CPG (โค้ด `auto_bio_lamp.py` ใน branch นี้: `กลุ่ม4.py`) — proposal ฉบับเต็มอยู่ที่ [`PROPOSAL.md`](PROPOSAL.md) และ [`proposal.json`](proposal.json)  
@@ -15,7 +15,7 @@ Mini Project: โคมไฟหุ่นยนต์ 4 แกนที่มี
 
 ไฟล์ต้นฉบับแก้ได้: `evidence/diagram/ros2_graph.mmd`. ขอบเขต: host = laptop (Ubuntu 24.04 + ROS 2 Jazzy) รัน vision, interaction, serial bridge และ logger; MCU = Maixduino K210 ขับเซอร์โวและ LED
 
-- **Node ที่เก็บ internal state และผู้รับผิดชอบ:** `interaction_node` เก็บ H/R ของฮอร์โมน 4 ตัว, emotion state, mood, หลอดงอน และ CPG o1/o2 (_ผู้รับผิดชอบ: เติมชื่อ_); `serial_bridge_node` เก็บคำสั่งล่าสุดและ watchdog (_เติมชื่อ_)
+- **Node ที่เก็บ internal state และผู้รับผิดชอบ:** `interaction_node` เก็บ H/R ของฮอร์โมน 4 ตัว, emotion state, mood, หลอดงอน และ CPG o1/o2 (_ผู้รับผิดชอบ: ภูวเมศฐ์); `serial_bridge_node` เก็บคำสั่งล่าสุดและ watchdog (ภูวเมศฐ์)
 - **เหตุใด graph นี้มีทั้ง AHM และ SO(2) CPG แม้เลือก AHM–emotion:** AHM ตัดสินว่า "รู้สึกอะไร" (เลือก state) ส่วน CPG สร้าง "จังหวะการขยับ" ของ state นั้น และค่า R ของฮอร์โมนก็ปรับ φ ของ CPG ด้วย (AHM–CPG) จึงต้องมีทั้งสองตัวใน `interaction_node`
 
 ## 2. Topic contract และ QoS
@@ -161,7 +161,7 @@ Offline trace มี fixture source identity/time; ROS messages จริงไ�
 | Baseline ≥ 2 conditions, 2 metrics, 3 repeats ต่อ condition | ☑ C0/C1, 3 metrics, 3 repeats |
 | Simulation และ real robot พร้อม scenario คน 10 นาที | ☑ แผน (ยังไม่ได้ทำ) |
 | Clock missing safety และ calibration plan | ☑ ส่วนที่ 3, `proposal.json` |
-| Timeline สมาชิก ผู้รับผิดชอบ และ evidence | ☑ timeline มีแล้ว — _ต้องเติมชื่อผู้รับผิดชอบ_ |
+| Timeline สมาชิก ผู้รับผิดชอบ และ evidence | ☑ timeline มีแล้ว — ภูวเมศฐ์ |
 
 - Group policy checker: 40/40 (`evidence/checker_group.txt`); `check_proposal.py proposal.json`: PASS
 - Offline run: `evidence/offline_run/` (summary.json, per-trial folders, report.html, source_snapshot, manifest.json)
@@ -178,6 +178,6 @@ py -3 offline_lab.py --policy-file lamp_week07/student_policy.py --condition all
 2. **ทำไมต้องบันทึก ROS bag และ bag ยังไม่ยืนยันอะไร** — bag เก็บทุก message ตามลำดับให้ replay และตรวจย้อนหลังได้ (เช่น หาว่า state เปลี่ยนเพราะ message ไหน) แต่ไม่ยืนยันว่าแขนขยับจริง ขยับเมื่อใด หรือปลอดภัย และ message ที่ไม่มี Header ไม่บอกเวลาที่ sensor วัดจริง ต้องมีวิดีโอ/encoder เพิ่ม
 3. **Baseline ที่ยุติธรรมควบคุมอะไรให้เหมือนกัน และเก็บ missing อย่างไร** — ต้องเหมือนกันทุกอย่างยกเว้นตัวแปรที่ทดสอบ: โค้ด, input/สคริปต์, ผู้เล่น, ตำแหน่งกล้อง, bounds, ความเร็ว, ค่าเริ่มต้น. Missing เก็บเป็น null/N/A พร้อม status และเหตุผล นับแยก และใช้ denominator เดียวกันทั้ง C0/C1 ไม่แทนด้วย 0
 
-วันส่ง proposal: _(เติมตามกำหนดของผู้สอน)_ · วัน simulation: _(เติม)_ · วัน real robot: _(เติม)_
+วันส่ง proposal: 16 พ.ย. · วัน simulation: 12 พ.ย. · วัน real robot: 12 พ.ย.
 
 **ความเสี่ยงสำคัญและสิ่งที่ต้องตรวจถัดไป:** (1) MediaPipe จับท่าพลาดเมื่อแสงน้อย ทำให้ M2 มี miss มาก — ต้องทดสอบแสงก่อน; (2) ฮอร์โมนชน clamp 1.0 ทำให้ C1 แยก "มาก" กับ "มากที่สุด" ไม่ได้; (3) เซอร์โวร้อนเมื่อรัน 10 นาทีต่อเนื่อง — ต้องพักและวัดอุณหภูมิ; (4) ต้องเพิ่ม CSV logger และสวิตช์ C0/C1 ในโค้ดก่อนเริ่ม
