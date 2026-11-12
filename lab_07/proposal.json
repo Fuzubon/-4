@@ -1,22 +1,90 @@
 {
-  "question": "TODO measurable research question",
-  "hypothesis": "TODO direction and boundary",
-  "biological_inspiration_source": "TODO source and exact mechanism",
-  "AHM_equation": "TODO source equation and at least one hormone",
-  "SO2_CPG_equation": "TODO Dr. Poramate SO(2) CPG notation",
-  "integration_description": "TODO AHM-CPG or AHM-emotion path",
-  "independent_variable": "TODO one planned factor",
-  "conditions": [{"name":"C0", "baseline":true, "change":"TODO baseline", "repeats":3}, {"name":"C1", "baseline":false, "change":"TODO one change", "repeats":3}],
-  "metrics": [{"name":"TODO metric1", "unit":"TODO", "measurement":"TODO measured boundary", "missing_rule":"TODO"}, {"name":"TODO metric2", "unit":"TODO", "measurement":"TODO measured boundary", "missing_rule":"TODO"}],
-  "controls": ["TODO policy", "TODO stimuli", "TODO hardware/configuration"],
-  "parameters": [{"name":"TODO", "value":null, "unit":"TODO", "provenance":"TODO source or proposed course model"}],
-  "simulation_plan":"TODO graph/clock/traces",
-  "real_robot_plan":"TODO sensors/mapping/calibration/actuator measurement",
-  "clock_correlation_plan":"TODO source ID/clock sync/error bound/log wrapper",
-  "safety_stop_plan":"TODO stop condition and operator",
-  "order_counterbalancing":"TODO C0/C1 order across repeats",
-  "paired_seed_or_participant_plan":"TODO paired assignment and consent handling",
-  "expected_input_ids_before_run":"TODO expected response denominator",
-  "human_scenario_duration_s":600,
-  "timeline":"TODO implementation/calibration/trials/analysis dates"
+  "question": "ใน offline course model การเพิ่ม transport jitter และ message drop พร้อมกันเปลี่ยนเวลาจาก interaction source ถึง applied movement+RGB onset และจำนวน source ที่ไม่มี both onset อย่างไร เมื่อเทียบกับ ideal transport?",
+  "hypothesis": "C1 จะมี median transport age และจำนวน missing/censored source outcomes มากกว่า C0; หากเกิด onset ครบ latency จะยังไม่สามารถใช้แทนเวลาตอบสนองทางกายภาพได้ เพราะวัดถึง software output เท่านั้น",
+  "biological_inspiration_source": "แนวคิด slow internal modulation ใช้กรอบ Artificial Hormone Mechanism จาก Homchanthanakul et al. (2019), DOI 10.1109/IROS40897.2019.8968580; oscillator อ้างสมการ SO(2) จากเอกสาร Week 03 ของรายวิชาโดย Dr. Poramate. อ้างอิงแนวคิด ไม่ได้อ้างว่าเป็นการทำซ้ำผลจากบทความ",
+  "AHM_equation": "แบบจำลองรายวิชา: P=k_prod*S, C=k_clear*H_old, B=k_bind*R_old, H_new=clamp(H_old+dt*(P-C-B),0,1), R=clamp((H-H_min)/(H_max-H_min),0,1). H เป็นสถานะสะสม; ตัวเลขและ Euler update เป็น proposed course model ไม่ใช่ parameter จาก paper",
+  "SO2_CPG_equation": "ใช้ old outputs พร้อมกัน: o1_next=tanh(alpha*(cos(phi)*o1+sin(phi)*o2)); o2_next=tanh(alpha*(-sin(phi)*o1+cos(phi)*o2)). ห้ามใช้ o1_next คำนวณ o2_next ในรอบเดียวกัน",
+  "integration_description": "แผน AHM–CPG: stimulus S ปรับ H, receptor R ใช้ bounded mapping phi=clamp(0.20+0.20*R,0.10,0.45) rad และ stride_half=clamp(0.055+0.010*R,0.040,0.070) m; SO(2) CPG สร้าง gait phase แล้ว decoder สร้าง semantic servo commands. Lab07 offline transport study วัด interaction/software-output boundary; ยังไม่ได้รวม AHM–CPG เข้ากับ ROS nodes หรือ physical robot",
+  "independent_variable": "transport profile: ideal C0 เทียบ combined delay/jitter/drop C1",
+  "conditions": [
+    {
+      "name": "C0",
+      "baseline": true,
+      "change": "Ideal modeled transport: delay 0 s, drop probability 0; ใช้ policy, source schedule, scheduler และ bounds เดียวกับ C1",
+      "repeats": 3
+    },
+    {
+      "name": "C1",
+      "baseline": false,
+      "change": "Combined modeled delay choices 0, 0.02, 0.04, 0.06, 0.10, 0.14, 0.18 s, random drop probability 0.08 และ burst drop 12.50–12.70 s; ไม่แยก causal effect ของ jitter กับ drop",
+      "repeats": 3
+    }
+  ],
+  "metrics": [
+    {
+      "name": "both_latency_s",
+      "unit": "s",
+      "measurement": "max(first applied movement, first applied RGB) minus original source_time_s; วัดใน offline virtual clock ถึง applied software outputs ไม่ใช่ physical onset",
+      "missing_rule": "ถ้า movement หรือ RGB onset อย่างใดอย่างหนึ่งไม่พบภายใน 22 s ให้เป็น null/N/A และนับแยกเป็น missing; ห้ามแทนด้วย 0"
+    },
+    {
+      "name": "transport_age_s",
+      "unit": "s",
+      "measurement": "receipt_time_s minus publish_time_s เฉพาะ messages ที่ได้รับ; รายงานจำนวน published, received, dropped และ censored แยกกัน",
+      "missing_rule": "message ที่ไม่ถึงหรือ censored หลังจบ trial ไม่มี transport age; ไม่แทนด้วย 0"
+    }
+  ],
+  "controls": [
+    "ใช้ policy/version, debounce/hysteresis, invalid/stale fallback, command bounds, slew และ 22 s virtual duration เดียวกันใน C0/C1",
+    "ใช้ source-input schedule และ paired seed เหมือนกันในแต่ละคู่",
+    "ใช้ 3 repeats seeds 41, 42, 43 และเก็บ input/command/event traces, config และ SHA-256 manifest ทุก run",
+    "ประกาศ expected input IDs ก่อนรันและใช้ denominator เดียวกันทั้ง C0/C1; รายงาน all 10 sources รวม missing/conflict/fault",
+    "ไม่เปลี่ยน node QoS, hardware, sample schedule หรือ protocol กลางการทดลอง"
+  ],
+  "parameters": [
+    {
+      "name": "dt",
+      "value": 0.02,
+      "unit": "s",
+      "provenance": "proposed course model ใน lab_07/README.md"
+    },
+    {
+      "name": "virtual_duration",
+      "value": 22,
+      "unit": "s",
+      "provenance": "proposed course model ใน lab_07/README.md; ไม่ใช่ human trial duration"
+    },
+    {
+      "name": "drop_probability_C1",
+      "value": 0.08,
+      "unit": "probability/message",
+      "provenance": "proposed course transport stress profile ใน lab_07/README.md"
+    },
+    {
+      "name": "expected_input_ids",
+      "value": [
+        "button_01",
+        "touch_01",
+        "approach_01",
+        "clear_01",
+        "near_01",
+        "clear_02",
+        "button_02",
+        "touch_conflict",
+        "fault_invalid",
+        "fault_stale"
+      ],
+      "unit": "source IDs",
+      "provenance": "source set จาก synthetic offline fixture; primary expected subset 7 IDs ต้องประกาศก่อนรันและรายงาน all 10 ด้วย"
+    }
+  ],
+  "simulation_plan": "รัน offline_lab.py --condition all --repeats 3 ด้วย seeds 41/42/43. เก็บ input_trace.csv, command_trace.csv, events.csv, metrics.json, config.json, report.html, source_snapshot และ manifest. ตรวจ paired inputs, message accounting และ N/A ก่อนคำนวณข้อสรุป; ผลทั้งหมดระบุว่าเป็น synthetic offline simulation.",
+  "real_robot_plan": "ยังไม่ได้ดำเนินการและไม่มีผลหุ่นยนต์จริง. ก่อนทดลองต้องใช้ Ubuntu 24.04 + ROS 2 Jazzy ที่เตรียมไว้, ติดตั้ง robot fixture อย่างปลอดภัย, ตรวจ sensor range/age, calibrate joint limits/units, วัด servo/RGB onset ด้วย external measurement และ operator มี emergency stop. ทดสอบทีละเงื่อนไขและหยุดทันทีเมื่อ sensor stale, pose เกิน bound, มี collision หรือ communication watchdog ทำงาน; ห้ามนำค่า simulator ไปขับ actuator โดยตรง.",
+  "clock_correlation_plan": "เก็บ source ID และ monotonic perf_counter_ns ที่ input publisher, interaction node, output collector; วัด clock offset/skew ด้วย shared host clock หรือ synchronization ที่บันทึก method และ error bound. ROS messages ที่ไม่มี Header ห้ามจับคู่ข้าม node จาก ordinal/payload ที่ซ้ำกัน. เพิ่ม camera/photodiode/encoder timestamp ที่สอบเทียบสำหรับ physical onset; หากยังไม่มี clock mapping/error bound ให้ source-to-physical latency เป็น N/A.",
+  "safety_stop_plan": "ผู้ควบคุมหนึ่งคนอยู่ที่ emergency stop ตลอด; ยึดฐาน/กันพื้นที่, จำกัด joint/velocity และทดสอบ watchdog ก่อนเปิด actuator. หยุดเมื่อคนเข้าเขตเสี่ยง, อุปกรณ์หลวม, เกิดการกระแทก/สั่นผิดปกติ, sensor stale/invalid, command หลุด bounds, loss of communication หรือ operator สั่งหยุด. ไม่เริ่ม physical test จนมีการสอบเทียบและอนุมัติจากผู้สอน/ผู้ดูแล.",
+  "order_counterbalancing": "offline ใช้ paired seeds ใน C0/C1; หากทำ physical pilot ให้สลับลำดับ C0/C1 แบบ AB/BA ระหว่าง paired runs และบันทึก startup offset, battery, hardware configuration และเวลาพัก.",
+  "paired_seed_or_participant_plan": "offline จับคู่ C0/C1 ด้วย source schedule และ seeds 41, 42, 43. Human study ยังไม่ดำเนินการ; ก่อนเริ่มต้องได้ consent/อนุมัติตามข้อกำหนดรายวิชา, ใช้ผู้เข้าร่วมสมัครใจ, ไม่เก็บข้อมูลระบุตัวตน, กำหนดผู้ถอนตัวได้ทุกเวลา และใช้ counterbalanced order โดยไม่บันทึกภาพ/เสียงหากไม่จำเป็น.",
+  "expected_input_ids_before_run": "ประกาศ all 10 IDs จาก source_inputs ก่อนรัน; expected positive-onset subset เบื้องต้นคือ button_01, touch_01, approach_01, clear_01, near_01, clear_02, button_02. ใช้ subset เดียวกันทั้ง C0/C1 และรายงาน input ที่ไม่มี onset พร้อม status/reason; ห้ามเลือก subset หลังเห็นผล.",
+  "human_scenario_duration_s": 600,
+  "timeline": "แผน 5 วันหลังผู้สอนอนุมัติ: วัน 1 ตรวจโค้ด/contract และทบทวนความเสี่ยง; วัน 2 รัน offline paired trials และ replay; วัน 3 หากมี robot ที่สอบเทียบแล้วทำ bench calibration/หยุดได้โดย operator; วัน 4 ทำ human interaction scenario 600 s ต่อ protocol หลัง consent/approval เท่านั้น; วัน 5 วิเคราะห์ raw data, missingness, uncertainty และเขียนรายงาน. ขณะนี้ทำเฉพาะ offline software plan; robot/human stages ยัง pending."
 }
