@@ -1,92 +1,80 @@
-# ใบงาน Lab 05 — Prediction, timing, evidence
+# ใบงาน Lab 05 — Prediction, timing, evidence (กรอกแล้ว)
 
-ฉบับพิมพ์: [Word](Lab05_Student_Worksheet_TH.docx) / [PDF](Lab05_Student_Worksheet_TH.pdf)
+ชื่อ: ภูวเมศฐ์ กิตติธันยวัฒน์  
+รหัสนักศึกษา: 6752500126  
+กลุ่ม: 4  
+ขอบเขต: ทุกตัวเลขเป็นผล proposed course model / synthetic contact demo ไม่ใช่การทดลองบนหุ่นยนต์จริงหรือการทำซ้ำ paper
 
-ชื่อ/รหัส________________ กลุ่ม________ วันที่________
+## 1. Architecture และ prediction
 
-**ขอบเขต:** main runner เป็น proposed course model ใช้ scheduled stimulus และ kinematic body; contact demo ใช้ synthetic signals ไม่ใช่ ALCS terrain experiment ของ paper
+`S → hormone controller → R_used → bounded phi/stride → SO(2) CPG → tripod decoder → kinematic body`. Main runner ไม่มี independent sensory/contact-force feedback; support/contact คำนวณจาก decoder ของ oscillator.
 
-## 1. ก่อนรัน: hypothesis และ architecture (10 นาที)
+Prediction จากสมการ (เขียนประกอบหลังได้ผลแล้ว ไม่ใช่ preregistration): B2 ซึ่งใช้ H/R ที่สะสมควรมี command เปลี่ยนเรียบกว่าการ direct input B1; B3 ตัด binding term จึงควรเปลี่ยน AUC/recovery; phi-only ควรเปลี่ยนจังหวะโดยคง stride; stride-only ควรเปลี่ยนระยะก้าวโดยคง phi.
 
-1. วาด S→controller→R_used→φ/stride→CPG→decoder→body ของ Lab แล้ววงจุดที่ยังไม่มี independent sensory feedback
-2. เขียน hypothesis1 ข้อสำหรับ B1 เทียบ B2 พร้อมตัวชี้วัดและทิศทางที่คาด เช่น TV, latency/recovery, segmentfrequency หลีกเลี่ยงคำว่า “ดีขึ้น” โดยไม่มี metric
-3. B3 ตัดอะไรออกจาก B2? สิ่งใดที่ยังคงมี memory?
-4. ตาราง provenance: source equation1 รายการ, proposedcourseequation1 รายการ, expectedmeasurement1 รายการ และ metric ที่วัดไม่ได้ 1 รายการ
+Provenance: สมการ SO(2) มีที่มาจากเอกสาร Week03; AHM จากเอกสาร Week04/paper ที่คู่มืออ้าง; Euler rates, constants, bounds และ simplified `R=H` เป็น proposed course model. วัดได้: command, oscillator crossings, kinematic distance, clamp/fault counters. วัดไม่ได้: dynamic stability, energy, torque, real contact force หรือ paper Harmony/Stability/Displacement.
 
-## 2. รัน comparison และตรวจเวลา (15 นาที)
+## 2. Timing ของ B2
 
-รัน comparison ตาม README เปิด report เลือก B2 เลื่อน timeline ไป 10.00/10.05s แล้วเปิด B2_states.csv/B2_intervals.csv เพื่อยืนยัน
+| command/input (s) | state end (s) | H_start | H_end | R_used | φ command (rad) | stride_half command (m) |
+|---:|---:|---:|---:|---:|---:|---:|
+| 10.00 | 10.05 | .000000 | .040000 | .000000 | .200000 | .055000 |
+| 10.05 | 10.10 | .040000 | .078400 | .040000 | .208000 | .055400 |
+| 20.00 | 20.05 | .999715 | .959727 | .999715 | .399943 | .064997 |
 
-| command/input time | state end time | H_start | H_end | R_used | φที่ใช้ | stride_half ที่ใช้ |
-|---|---|---|---|---|---|---|
-| 10.00 | | | | | | |
-| 10.05 | | | | | | |
-| 20.00 | | | | | | |
+B1 เป็น direct algebraic path: command ใช้ S ที่ 10.00 ได้ทันที แต่ state logger เป็น post-update จึงเห็น state ใหม่ที่ 10.05; ความต่าง 0.05 s เป็น log/update convention ไม่ใช่ network หรือ hardware latency. ทุก condition ใช้ oscillator ที่ผ่าน warmup 10 s ด้วย phi=.20 จาก initial oscillator เดียวกัน; H/R, body origin, anchors และ log origin ถูก reset โดยยังเก็บ oscillator หลัง warmup.
 
-อธิบายจาก CSV ว่าเหตุใด B1 command latency กับ state latency จึงต่างกัน: __________________
+## 3. Main comparison
 
-ตรวจ warmup/initialstates ใน config: ทุก condition เริ่ม CPG เหมือนกันหรือไม่? หลักฐาน__________________
+| Condition | φ TV (rad) | max Δφ/step (rad) | stride TV (m) | command latency (s) | recovery (s) | on frequency (Hz) | on distance (m) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| B0 fixed | .000000 | .000000 | .000000 | N/A | N/A | .624877 | .778743 |
+| B1 direct | .400000 | .200000 | .020000 | .00 | .00 | 1.268366 | 1.825152 |
+| B2 hormone | .399827 | .008000 | .019991 | .15 | 2.85 | 1.202760 | 1.706250 |
+| B3 binding ablation | .399534 | .008000 | .019977 | .15 | 3.80 | 1.225791 | 1.727498 |
 
-## 3. เปรียบเทียบผลและข้อจำกัด (15 นาที)
+ระยะรวมตลอด 30 s: B0=2.332679 m, B1=3.377516 m, B2=3.382580 m, B3=3.460133 m. B2/B3 มี max φ step ต่ำกว่า B1 (.008 เทียบ .2 rad) แม้ total variation ใกล้กัน; TV รวมตลอด run จึงไม่ใช่ตัวแทนของความเรียบเฉพาะช่วงหรือความปลอดภัย. ผลสนับสนุนว่าการตอบสนองฮอร์โมนช้าลง แต่ B2/B3 ไม่ได้เพิ่มระยะรวมมากกว่า B1 อย่างชัดเจน.
 
-เติมจาก metrics และ segment_metrics พร้อมหน่วย ห้ามคัดลอกผล source paper มาใส่เป็นผล run นี้
+การลด TV หรือการมี support count=3 ไม่ยืนยันว่าหุ่นยนต์ไม่ล้มหรือใช้พลังงานน้อยลง: ไม่มี rigid-body dynamics, force plate, CoM/support polygon, friction, motor torque, current หรือ energy. Bounds เหมือนกันไม่ทำให้ amplitude เท่ากัน; command trace ต่างตาม R_used และใน run นี้ command clamp count เป็นศูนย์. ต้องแยก pre/on/off เพราะการเฉลี่ยทั้ง 30 s กลบ transient และช่วงคืน baseline.
 
-| condition | TV φ(rad) | maxΔφ/step(rad) | TV stride(m) | cmd latency(s) | cmd recovery(s) | on frequency(Hz) | on distance(m) |
-|---|---|---|---|---|---|---|---|
-| B0 | | | | | | | |
-| B1 | | | | | | | |
-| B2 | | | | | | | |
-| B3 | | | | | | | |
+## 4. One-factor และ fault
 
-1. ผลข้อใดสนับสนุน hypothesis และผลข้อใดไม่สนับสนุน? __________________
-2. การลด TV ยืนยันว่าหุ่นยนต์ไม่ล้มหรือใช้พลังงานน้อยลงหรือไม่? ขาดข้อมูลอะไร? __________________
-3. Bounds เหมือนกันทำให้ commandamplitude เท่ากันหรือไม่? ใช้ peak/trace ประกอบ __________________
-4. ทำไมไม่ใช้ frequency เฉลี่ย 30s แทน pre/on/off? __________________
+| Mapping | Condition | Distance (m) | On frequency (Hz) | ปัจจัยที่เปลี่ยน |
+|---|---|---:|---:|---|
+| phi-only | B0 | 2.332679 | .624877 | fixed |
+| phi-only | B1 | 3.099299 | 1.268366 | direct φ; stride คง .055 m |
+| phi-only | B2 | 3.117323 | 1.202760 | hormone φ; stride คง .055 m |
+| phi-only | B3 | 3.173134 | 1.225791 | binding=0; stride คง .055 m |
+| stride-only | B0 | 2.332679 | .624877 | fixed |
+| stride-only | B1 | 2.468477 | 1.268366 | direct stride; φ คง .20 rad |
+| stride-only | B2 | 2.473523 | 1.202760 | hormone stride; φ คง .20 rad |
+| stride-only | B3 | 2.484383 | 1.225791 | binding=0; φ คง .20 rad |
 
-## 4. เปลี่ยนหนึ่งปัจจัยและตรวจ fault (20 นาที)
+Phi-only/stride-only เปลี่ยน mapping channel เดียวตาม protocol; B1/B2/B3 ยังต่างกันที่ direct/hormone/binding. Distance changes ใน deterministic kinematic runs สนับสนุนผล mapping ที่กำหนด แต่ไม่แยกผล hardware/contact จริง.
 
-เลือก phi-only หรือ stride-only ตั้ง prediction ก่อนรัน ตรวจ parameter ที่คงที่จาก intervalCSV แล้วเปรียบเทียบ B1/B2 กับ bothmapping
+Fault profile B2, input 15.00 s: fallback ใช้ command-neutral `R_used=0`, `φ=.20 rad`, `stride=.055 m`; ไม่ใช้ H เป็น command ใน fault interval. State ที่ 15.05 s ถูก reset `H=R=0`; input 15.05 ทำให้ state 15.10 เป็น `.04`, 15.15 เป็น `.0784`. Fallback เกิดก่อน CPG command/update. เป็น software policy ไม่ใช่ safety certification.
 
-สิ่งที่เปลี่ยน________ สิ่งที่คงที่________ metric หลัก________ prediction________
+## 5. Contact mini-lab
 
-ผลและข้อจำกัด causalclaim: __________________
+| Case | SI ต่อขาโดยทั่วไป | SIF | MAE | Valid rows | สิ่งที่สรุปไม่ได้ |
+|---|---|---:|---:|---:|---|
+| matched | ทุกขา +1 | 0 | 0 | 551/600 | ไม่ได้ยืนยัน sensor/hardware จริง |
+| gain-offset | ทุกขา +1 | ≈0 | .162844 | 551/600 | correlation ไม่วัด gain/offset |
+| mixed-delay | LF/RM/LH ≈+1; RF/LM/RH ≈0.000009 | .499995 | .226007 | 551/600 | correlation ไม่แยกเหตุ delay/phase ทั้งหมด |
+| all-inverted | ทุกขา −1 | ≈0 | .631375 | 551/600 | SIF ต่ำไม่ได้แปลว่าขาแต่ละขาถูกต้อง |
+| constant | N/A (variance=0) | N/A | 0 | 0/600 | ห้ามแทน undefined correlation ด้วย 0 |
 
-รัน faultprofile เปิด input15.00 แล้วบันทึก:
+Gain-offset ยังมี Pearson correlation สูงเพราะบวก offset/คูณ positive gain ไม่เปลี่ยน correlation แต่ MAE ไม่เป็นศูนย์. เมื่อทุกขากลับเครื่องหมายเหมือนกัน SIF=SD ของ SI ยังเป็นศูนย์; release `1/(1+exp(−SIF))=.5`. Constant ต้องเป็น N/A เพราะ variance เป็นศูนย์. Fault หนึ่ง sample ทำให้ 50 rolling windows เพิ่มจาก unavailable startup 49 windows; จึงรวม unavailable 99/600 และ valid 501/600. SIF นี้เป็น proposed paired-Pearson definition; ไม่ได้ต่อ Cg/MI_H และไม่ใช่การยืนยันสมการ paper.
 
-| field | B2 value |
-|---|---|
-| fault at command15.00 | |
-| H_used / R_used | |
-| φ / stride ที่ใช้ | |
-| H state15.05 | |
-| H state15.10 | |
+## 6. หลักฐานและข้อจำกัด
 
-อธิบายว่า fallback ทำก่อนหรือหลัง command และเหตุใด policy นี้ยังไม่รับรอง hardware safety: __________________
+ผล comparison, phi-only, stride-only, zero/one/spike/fault และ contact demo ถูกสร้างจากคำสั่งใน README; result directories มี config, raw CSV, report และ manifest/source snapshot. การรันซ้ำเป็น deterministic ไม่ใช่ independent experimental replicates.
 
-## 5. Contact mini-lab (20 นาที)
+```powershell
+py -3 lab05.py --condition all --profile step --mapping both --output-dir results\group4_comparison
+py -3 lab05.py --mapping phi-only --output-dir results\group4_phi_only
+py -3 lab05.py --mapping stride-only --output-dir results\group4_stride_only
+py -3 lab05.py --condition all --profile fault --output-dir results\group4_fault
+py -3 contact_demo.py --output-dir results\group4_contact
+```
 
-เปิด contactreport เลือก cases ด้านล่าง เปรียบเทียบ SI, SIF, absoluteerror และ validity
-
-| case | SI ของแต่ละขาโดยทั่วไป | SIF | absoluteerror | สิ่งที่อนุมานไม่ได้ |
-|---|---|---|---|---|
-| matched | | | | |
-| gain-offset | | | | |
-| mixed-delay | | | | |
-| all-inverted | | | | |
-| constant | | | | |
-
-1. ทำไม gain-offset ให้ correlation สูงแม้ error ไม่เป็น 0? __________________
-2. เมื่อทุกขา inverted ทำไม SIF จึงยังเป็น 0? release ที่ SIF0 มีค่าเท่าไร? __________________
-3. constant ควรเป็น SI0 หรือ N/A? __________________
-4. fault หนึ่ง sample มีผลต่อ rollingwindows กี่ rows ไม่นับ startup49rows? ตรวจ CSV__________________
-5. pairedPearson ของ demo มีสถานะ source/proposed ใด? ต่อ Cg/MI แล้วหรือยัง? __________________
-
-## 6. ส่งงานและ exit ticket (10 นาที)
-
-ส่ง prediction ก่อนรัน, config/manifest/rawCSV ของ comparison+one-factorrun+fault, contactmetrics และ CSV หนึ่ง case ที่อภิปราย, ตารางพร้อมหน่วยและกราฟ 2 รูป พร้อมรายงาน 2–3 หน้า บอกคำสั่งและ Pythonversion เพื่อรันซ้ำ
-
-Exit: เขียนหนึ่ง claim ที่ข้อมูลรองรับ และหนึ่ง claim ที่ยังรองรับไม่ได้ พร้อมชื่อ metric/ข้อมูลที่ต้องเพิ่ม
-
-**Rubric20 คะแนน:** architecture/provenance4; timing/fault4; reproducibility/data3; quantitativecomparison/one-factor5; interpretation/contact/N/A4 คะแนนมาจากเหตุผลกับหลักฐาน ไม่ได้ให้เต็มเพราะ runner รันผ่านหรือเพราะผล “ดีขึ้น” ตามคาด
-
-**Workshop 25 นาทีในคาบ Week05:** ทำข้อ 1 แบบย่อ 5 นาที, ข้อ 2 10 นาที, ข้อ 3 10 นาที ส่วน one-factor/fault/contact เป็น extended lab หรือการบ้าน ใช้เวลารวม 90 นาทีตามใบงาน ไม่รวมเวลาติดตั้ง Python
+Claim supported: hormone mapping in this course model reduces per-step command jump and adds recovery transient. Claim not supported: gait stability, efficiency, robot safety, physical contact accuracy, or replication of paper results.
