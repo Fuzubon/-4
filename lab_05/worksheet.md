@@ -1,7 +1,7 @@
 # ใบงาน Lab 05 — Prediction, timing, evidence (กรอกแล้ว)
 
 กลุ่ม: 4  
-สมาชิก: ภูวเมศฐ์ กิตติธันยวัฒน์ (6752500126), _(เติมชื่อและรหัสสมาชิกคนอื่น)_  
+สมาชิก: ภูวเมศฐ์ กิตติธันยวัฒน์ 6752500126
 วันที่ทดลอง: 12 พ.ย. 2026  
 Python: 3.13 (ชุดหลักฐานรันซ้ำด้วย 3.13.18); ทุก output directory มี `config.json`, `manifest.json` (SHA-256) และ `source_snapshot/`  
 ขอบเขต: ทุกตัวเลขเป็นผล proposed course model / synthetic contact demo ไม่ใช่การทดลองบนหุ่นยนต์จริงหรือการทำซ้ำ paper
