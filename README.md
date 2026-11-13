@@ -1,5 +1,11 @@
 # RAE67 bio ins
 
+## วิดีโอของกลุ่ม 4
+
+[▶️ เปิดโฟลเดอร์วิดีโอและไฟล์นำเสนอใน Google Drive](https://drive.google.com/drive/folders/1aFpu_boyRzaqrkSMcvkGF6VMdsKA6XqW?usp=sharing)
+
+หากอาจารย์เปิดลิงก์ไม่ได้ ให้ตรวจสอบการแชร์ใน Google Drive และอนุญาตให้อาจารย์ดูไฟล์ได้
+
 ชุดแล็บสำหรับรายวิชา Bio Inspired Robotics จัดแต่ละแล็บไว้ในโฟลเดอร์ `lab_xx` เพื่อเพิ่มแล็บถัดไปได้โดยไม่ปะปนกัน
 
 | แล็บ | เนื้อหา | เอกสารเริ่มต้น |
